@@ -470,7 +470,7 @@ class ArgoverseMap:
         return is_layer_boolean_arr
 
     def get_nearest_centerline(
-        self, query_xy_city_coords: np.ndarray, agent_dir_vector: np.ndarray, city_name: str, visualize: bool = False
+        self, query_xy_city_coords: np.ndarray, agent_dir: np.ndarray, city_name: str, visualize: bool = False
     ) -> Tuple[LaneSegment, float, np.ndarray]:
         """
         KD Tree with k-closest neighbors or a fixed radius search on the lane centroids
@@ -557,7 +557,7 @@ class ArgoverseMap:
             ids_list = []
             for i in ids: 
                 # Compute angle between agent and lane
-                agent_lane_angle = abs( np.arctan(agent_dir_vector[1]/agent_dir_vector[0]) - np.arctan(lane_dir_vectors[i][1]/ lane_dir_vectors[i][0]) )
+                agent_lane_angle = abs( agent_dir - np.arctan2(lane_dir_vectors[i][1],lane_dir_vectors[i][0]) )
                 #np.arccos(np.dot(agent_dir_vector, lane_dir_vectors[i]) / (np.linalg.norm(agent_dir_vector) * np.linalg.norm(lane_dir_vectors[i])))
                 if agent_lane_angle < np.pi / 4: 
                     ids_list.append(i) 
