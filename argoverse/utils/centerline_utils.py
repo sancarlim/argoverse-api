@@ -387,6 +387,7 @@ def lane_waypt_to_query_dist(
     """
     per_lane_dists: List[float] = []
     dense_centerlines: List[np.ndarray] = []
+    lane_dir_vectors: List[np.ndarray] = []
     for nn_idx, lane_obj in enumerate(nearby_lane_objs):
         centerline = lane_obj.centerline
         # densely sample more points
@@ -394,8 +395,19 @@ def lane_waypt_to_query_dist(
         centerline = interp_arc(sample_num, centerline[:, 0], centerline[:, 1])
         dense_centerlines += [centerline]
         # compute norms to waypoints
-        waypoint_dist = np.linalg.norm(centerline - query_xy_city_coords, axis=1).min()
-        per_lane_dists += [waypoint_dist]
+        closest_waypt_indxs = np.linalg.norm(centerline - query_xy_city_coords, axis=1).argsort()[:2]
+        # Compute lane direction (as a vector)
+        prev_waypoint_id = closest_waypt_indxs.min()
+        next_waypoint_id = closest_waypt_indxs.max()
+        prev_waypoint = centerline[prev_waypoint_id]
+        next_waypoint = centerline[next_waypoint_id]
+        lane_dir_vector = next_waypoint - prev_waypoint
+        # waypoint_dist = np.linalg.norm(centerline[waypoint_min_dist_id] - query_xy_city_coords)
+        # dif_pos = centerline[waypoint_min_dist_id + 1] - centerline[waypoint_min_dist_id]
+        # direction = np.arctan(dif_pos[1]/dif_pos[0])
+        per_lane_dists += [np.linalg.norm(centerline - query_xy_city_coords, axis=1).min()]
+        lane_dir_vectors += [lane_dir_vector]
     per_lane_dists = np.array(per_lane_dists)
+    lane_dir_vectors = np.array(lane_dir_vectors)
     min_dist_nn_indices = np.argsort(per_lane_dists)
-    return per_lane_dists, min_dist_nn_indices, dense_centerlines
+    return per_lane_dists, min_dist_nn_indices, dense_centerlines, lane_dir_vectors
