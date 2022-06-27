@@ -16,7 +16,7 @@ from argoverse.map_representation.map_api import ArgoverseMap
 from argoverse.visualization.visualize_sequences import viz_sequence
 
 parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-parser.add_argument("--root", help="sequence location ")
+parser.add_argument("--root", help="sequence location ", default='/media/14TBDISK/sandra/argodataset/val/data/')
 parser.add_argument(
     "--max_videos",
     type=int,
@@ -35,7 +35,7 @@ def main(arguments: List[str]) -> int:
     os.makedirs(args.output_dir, exist_ok=True)
 
     max_videos = args.max_videos
-    for seq_name in sequence_list[:max_videos]:
+    for seq_name in sequence_list['3411.csv','3566.csv','3638.csv','774.csv','1119.csv','1371.csv','1825.csv','1858.csv']:
         seq_path = os.path.join(args.root, seq_name)
         df = pd.read_csv(seq_path)
         count = 0

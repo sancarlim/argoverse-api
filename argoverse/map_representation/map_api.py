@@ -32,6 +32,8 @@ from argoverse.utils.se2 import SE2
 from .lane_segment import LaneSegment
 from .map_viz_helper import render_global_city_map_bev
 
+
+
 GROUND_HEIGHT_THRESHOLD = 0.3  # 30 centimeters
 MAX_LABEL_DIST_TO_LANE = 20  # meters
 OUT_OF_RANGE_LANE_DIST_THRESHOLD = 5.0  # 5 meters
@@ -470,7 +472,7 @@ class ArgoverseMap:
         return is_layer_boolean_arr
 
     def get_nearest_centerline(
-        self, query_xy_city_coords: np.ndarray, agent_dir: np.ndarray, city_name: str, visualize: bool = False
+        self, query_xy_city_coords: np.ndarray, city_name: str, visualize: bool = False, name = None,
     ) -> Tuple[LaneSegment, float, np.ndarray]:
         """
         KD Tree with k-closest neighbors or a fixed radius search on the lane centroids
@@ -518,15 +520,16 @@ class ArgoverseMap:
         nearby_lane_objs = [lane_centerlines_dict[lane_id] for lane_id in nearby_lane_ids]
 
         cache = lane_waypt_to_query_dist(query_xy_city_coords, nearby_lane_objs)
-        per_lane_dists, min_dist_nn_indices, dense_centerlines, lane_dir_vectors = cache
+        per_lane_dists, min_dist_nn_indices, dense_centerlines = cache
 
         closest_lane_obj = nearby_lane_objs[min_dist_nn_indices[0]]
         closest_lane_id = nearby_lane_ids[min_dist_nn_indices[0]]
         dense_centerline = dense_centerlines[min_dist_nn_indices[0]] 
         
+        fig=None
         if visualize:
             # visualize dists to nearby centerlines
-            fig = plt.figure(figsize=(22.5, 8))
+            fig = plt.figure(1, figsize=(22.5, 8))
             ax = fig.add_subplot(111)
 
             (query_x, query_y) = query_xy_city_coords.squeeze()
@@ -536,42 +539,52 @@ class ArgoverseMap:
             self.plot_nearby_halluc_lanes(ax, city_name, query_x, query_y)
 
             for i, line in enumerate(dense_centerlines):
+                lane_dir_vector = self.get_lane_direction(line, query_xy_city_coords, city_name)
                 ax.plot(line[:, 0], line[:, 1], color="y")
                 ax.text(line[:, 0].mean(), line[:, 1].mean(), str(per_lane_dists[i]))
-
-            ax.axis("equal")
-            plt.show()
-            plt.close("all")
-
-        
-        
-            return [nearby_lane_ids[i] for i in ids], conf[ids], [dense_centerlines[i] for i in ids], per_lane_dists
+                plt.scatter(
+                    query_xy_city_coords[0],
+                    query_xy_city_coords[1],
+                    200,
+                    marker=".",
+                    color="b",
+                )
+                dx = lane_dir_vector[0] * 10
+                dy = lane_dir_vector[1] * 10
+                plt.arrow(
+                    query_xy_city_coords[0],
+                    query_xy_city_coords[1],
+                    dx,
+                    dy,
+                    color="r",
+                    width=0.3,
+                    zorder=2,
+                )
+                centerline_length = line.shape[0]
+                for i in range(centerline_length):
+                    plt.scatter(line[i, 0], line[i, 1], i / 5.0, marker=".", color="k") 
+            #plt.show()
+            #plt.close("all")   
+            plt.savefig(name, bbox_inches='tight')     
+            plt.close()
         
         # estimate confidence
         conf = 1.0 - (per_lane_dists / OUT_OF_RANGE_LANE_DIST_THRESHOLD)
 
         # Return lanes that have a point closer than 1m to the query
-        ids = [i for i in range(len(conf)) if per_lane_dists[i] < 2.0]
+        ids = [i for i in range(len(conf)) if per_lane_dists[i] < 1]
 
         if len(ids) > 0:
-            ids_list = []
-            for i in ids: 
-                # Compute angle between agent and lane
-                agent_lane_angle = abs( agent_dir - np.arctan2(lane_dir_vectors[i][1],lane_dir_vectors[i][0]) )
-                #np.arccos(np.dot(agent_dir_vector, lane_dir_vectors[i]) / (np.linalg.norm(agent_dir_vector) * np.linalg.norm(lane_dir_vectors[i])))
-                if agent_lane_angle < np.pi / 4: 
-                    ids_list.append(i) 
-
-            return [nearby_lane_ids[i] for i in ids_list], conf[ids_list], [dense_centerlines[i] for i in ids_list]
-
+            return [nearby_lane_ids[i] for i in ids], conf[ids], [dense_centerlines[i] for i in ids]  , [per_lane_dists[i] for i in ids]  
         else:
             conf = max(0.0, max(conf))  # clip to ensure positive value
-            return [closest_lane_id], conf, [dense_centerline]
+            print("No lanes with a distance < 2m to the query")
+            return [closest_lane_id], np.array([conf]), [dense_centerline] , per_lane_dists
         
 
 
     def get_lane_direction(
-        self, query_xy_city_coords: np.ndarray, city_name: str, visualize: bool = False
+        self, centerline, query_xy_city_coords: np.ndarray, city_name: str, visualize: bool = False, 
     ) -> Tuple[np.ndarray, float]:
         """
         Get vector direction of the lane you're in.
@@ -592,9 +605,9 @@ class ArgoverseMap:
             'centerline', 'predecessor', 'successor', 'turn_direction',
             'is_intersection', 'has_traffic_control'
         """
-        cache = self.get_nearest_centerline(query_xy_city_coords, city_name)
-        lane_obj, confidence, dense_centerline = cache
-        centerline = dense_centerline
+        #cache = self.get_nearest_centerline(query_xy_city_coords, city_name)
+        #lane_obj, confidence, dense_centerline = cache
+        #centerline = dense_centerline
 
         waypoint_dists = np.linalg.norm(centerline - query_xy_city_coords, axis=1)
         closest_waypt_indxs = np.argsort(waypoint_dists)[:2]
@@ -632,8 +645,8 @@ class ArgoverseMap:
             plt.axis("equal")
             plt.show()
             plt.close("all")
-
-        return lane_dir_vector, confidence
+            
+        return lane_dir_vector #, confidence
 
     def get_lane_ids_in_xy_bbox(
         self,
