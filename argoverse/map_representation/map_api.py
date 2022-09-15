@@ -36,7 +36,7 @@ from .map_viz_helper import render_global_city_map_bev
 
 GROUND_HEIGHT_THRESHOLD = 0.3  # 30 centimeters
 MAX_LABEL_DIST_TO_LANE = 20  # meters
-OUT_OF_RANGE_LANE_DIST_THRESHOLD = 5.0  # 5 meters
+OUT_OF_RANGE_LANE_DIST_THRESHOLD = 2.8  # 5 meters
 ROI_ISOCONTOUR = 5.0
 
 # argoverse-api/map_files
@@ -572,14 +572,14 @@ class ArgoverseMap:
         conf = 1.0 - (per_lane_dists / OUT_OF_RANGE_LANE_DIST_THRESHOLD)
 
         # Return lanes that have a point closer than 1m to the query
-        ids = [i for i in range(len(conf)) if per_lane_dists[i] < 1]
+        ids = [i for i in range(len(conf)) if per_lane_dists[i] < OUT_OF_RANGE_LANE_DIST_THRESHOLD]
 
         if len(ids) > 0:
             return [nearby_lane_ids[i] for i in ids], conf[ids], [dense_centerlines[i] for i in ids]  , [per_lane_dists[i] for i in ids]  
         else:
             conf = max(0.0, max(conf))  # clip to ensure positive value
-            print("No lanes with a distance < 2m to the query")
-            return [closest_lane_id], np.array([conf]), [dense_centerline] , per_lane_dists
+            print("No lanes with a distance < 3m to the query")
+            return [closest_lane_id], [conf], [dense_centerline] , per_lane_dists
         
 
 
@@ -605,9 +605,10 @@ class ArgoverseMap:
             'centerline', 'predecessor', 'successor', 'turn_direction',
             'is_intersection', 'has_traffic_control'
         """
-        #cache = self.get_nearest_centerline(query_xy_city_coords, city_name)
-        #lane_obj, confidence, dense_centerline = cache
-        #centerline = dense_centerline
+        if centerline is None:
+            cache = self.get_nearest_centerline(query_xy_city_coords, city_name)
+            lane_obj, confidence, dense_centerline = cache
+            centerline = dense_centerline
 
         waypoint_dists = np.linalg.norm(centerline - query_xy_city_coords, axis=1)
         closest_waypt_indxs = np.argsort(waypoint_dists)[:2]

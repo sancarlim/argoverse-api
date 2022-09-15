@@ -168,33 +168,6 @@ def filter_candidate_centerlines(
     return filtered_candidate_centerlines
 
 
-def is_overlapping_lane_seq(lane_seq1: Sequence[int], lane_seq2: Sequence[int]) -> bool:
-    """
-    Check if the 2 lane sequences are overlapping.
-    Overlapping is defined as::
-
-        s1------s2-----------------e1--------e2
-
-    Here lane2 starts somewhere on lane 1 and ends after it, OR::
-
-        s1------s2-----------------e2--------e1
-
-    Here lane2 starts somewhere on lane 1 and ends before it
-
-    Args:
-        lane_seq1: list of lane ids
-        lane_seq2: list of lane ids
-
-    Returns:
-        bool, True if the lane sequences overlap
-    """
-
-    if lane_seq2[0] in lane_seq1[1:] and lane_seq1[-1] in lane_seq2[:-1]:
-        return True
-    elif set(lane_seq2) <= set(lane_seq1):
-        return True
-    return False
-
 
 def get_normal_and_tangential_distance_point(
     x: float, y: float, centerline: np.ndarray, delta: float = 0.01, last: bool = False
@@ -346,6 +319,34 @@ def get_centerlines_most_aligned_with_trajectory(xy: np.ndarray, candidate_cl: L
             max_dist_along_cl = max(max_dist_along_cl, dist_along_cl)
 
     return candidate_centerlines
+
+
+def is_overlapping_lane_seq(lane_seq1: Sequence[int], lane_seq2: Sequence[int]) -> bool:
+    """
+    Check if the 2 lane sequences are overlapping.
+    Overlapping is defined as::
+
+        s1------s2-----------------e1--------e2
+
+    Here lane2 starts somewhere on lane 1 and ends after it, OR::
+
+        s1------s2-----------------e2--------e1
+
+    Here lane2 starts somewhere on lane 1 and ends before it
+
+    Args:
+        lane_seq1: list of lane ids
+        lane_seq2: list of lane ids
+
+    Returns:
+        bool, True if the lane sequences overlap
+    """
+
+    if lane_seq2[0] in lane_seq1[1:] and lane_seq1[-1] in lane_seq2[:-1]:
+        return True
+    elif set(lane_seq2) <= set(lane_seq1):
+        return True
+    return False
 
 
 def remove_overlapping_lane_seq(lane_seqs: List[List[int]]) -> List[List[int]]:
